@@ -49,21 +49,30 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
 
-    # Generate starting balances of 0 per asset-inventory group
-    starting_balances = {
-        (asset, inventory): 0
-        for asset, inventory in df[['asset', 'inventory']].drop_duplicates().values
-    }
+    st.subheader("Step 1: Starting Balances")
+    st.markdown("Please provide the starting balance per asset and per inventory. If left blank, the app will assume a starting balance of 0.")
 
-    processed_df = compute_processing_order_by_asset_inventory(df, starting_balances, prompt_user=False)
+    unique_pairs = df[['asset', 'inventory']].drop_duplicates().values
+    starting_balances = {}
+    for asset, inventory in unique_pairs:
+        key = f"{asset} | {inventory}"
+        user_input = st.text_input(f"Starting balance for {key}", value="0")
+        try:
+            starting_balances[(asset, inventory)] = float(user_input)
+        except ValueError:
+            st.warning(f"Invalid input for {key}. Defaulting to 0.")
+            starting_balances[(asset, inventory)] = 0
 
-    st.success("Processing complete!")
-    st.dataframe(processed_df)
+    if st.button("Process Report"):
+        processed_df = compute_processing_order_by_asset_inventory(df, starting_balances, prompt_user=False)
 
-    csv = processed_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="Download Processed CSV",
-        data=csv,
-        file_name='processed_asset_inventory.csv',
-        mime='text/csv'
-    )
+        st.success("Processing complete!")
+        st.dataframe(processed_df)
+
+        csv = processed_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Download Processed CSV",
+            data=csv,
+            file_name='processed_asset_inventory.csv',
+            mime='text/csv'
+        )
