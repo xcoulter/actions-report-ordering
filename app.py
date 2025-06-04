@@ -38,9 +38,6 @@ def compute_processing_order_by_asset_inventory(df: pd.DataFrame, starting_balan
         results.append(group)
 
     final_df = pd.concat(results).sort_values(['asset', 'inventory', 'process_order'])
-    # Move 'process_order' column to the front
-    columns = ['process_order'] + [col for col in final_df.columns if col != 'process_order']
-    final_df = final_df[columns]
     return final_df
 
 # Streamlit App
@@ -70,7 +67,6 @@ if uploaded_file is not None:
         processed_df = compute_processing_order_by_asset_inventory(df, starting_balances, prompt_user=False)
 
         st.success("Processing complete!")
-        st.markdown("**Note:** You may still need to sort your report by the `process_order` column to view the correct sequence.")
         st.dataframe(processed_df)
 
         csv = processed_df.to_csv(index=False).encode('utf-8')
