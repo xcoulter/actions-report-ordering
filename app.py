@@ -1,18 +1,10 @@
 import pandas as pd
 import streamlit as st
-from decimal import Decimal, getcontext
-
-# Set decimal precision to 30
-getcontext().prec = 30
 
 def compute_processing_order_by_asset_inventory(df: pd.DataFrame, starting_balances: dict = None, prompt_user=True) -> pd.DataFrame:
     results = []
     df = df.copy()
     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
-
-    # Convert numeric columns to Decimal for high precision
-    df['assetUnitAdj'] = df['assetUnitAdj'].apply(Decimal)
-    df['assetBalance'] = df['assetBalance'].apply(Decimal)
 
     if starting_balances is None:
         starting_balances = {}
@@ -22,7 +14,7 @@ def compute_processing_order_by_asset_inventory(df: pd.DataFrame, starting_balan
         group['process_order'] = -1
 
         if (asset, inventory) in starting_balances:
-            start_balance = Decimal(starting_balances[(asset, inventory)])
+            start_balance = starting_balances[(asset, inventory)]
         elif prompt_user:
             start_balance = group.iloc[0]['assetBalance'] - group.iloc[0]['assetUnitAdj']
         else:
@@ -33,7 +25,7 @@ def compute_processing_order_by_asset_inventory(df: pd.DataFrame, starting_balan
         order = []
 
         for i in range(len(group)):
-            unprocessed['simulated_balance'] = unprocessed['assetUnitAdj'].apply(lambda x: current_balance + x)
+            unprocessed['simulated_balance'] = current_balance + unprocessed['assetUnitAdj']
             unprocessed['diff'] = (unprocessed['simulated_balance'] - unprocessed['assetBalance']).abs()
             next_idx = unprocessed['diff'].idxmin()
             order.append((next_idx, i))
@@ -66,10 +58,10 @@ if uploaded_file is not None:
         key = f"{asset} | {inventory}"
         user_input = st.text_input(f"Starting balance for {key}", value="0")
         try:
-            starting_balances[(asset, inventory)] = Decimal(user_input)
-        except Exception:
+            starting_balances[(asset, inventory)] = float(user_input)
+        except ValueError:
             st.warning(f"Invalid input for {key}. Defaulting to 0.")
-            starting_balances[(asset, inventory)] = Decimal('0')
+            starting_balances[(asset, inventory)] = 0
 
     if st.button("Process Report"):
         processed_df = compute_processing_order_by_asset_inventory(df, starting_balances, prompt_user=False)
